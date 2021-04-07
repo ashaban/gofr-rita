@@ -1,0 +1,64 @@
+{
+  "id": "7db9deae-6a36-4cf3-9fcd-2e00eb6226e1",
+  "resourceType": "Bundle",
+  "type": "batch",
+  "entry": [{
+    "resource": {
+      "resourceType": "Location",
+      "name": "Lake",
+      "status": "active",
+      "mode": "instance",
+      "id": "44af09da-c517-52ac-8bc2-34bf1b12728a",
+      "identifier": [
+        {
+          "system": "https://digitalhealth.intrahealth.org/source1",
+          "value": "44af09da-c517-52ac-8bc2-34bf1b12728a"
+        }
+      ],
+      "partOf": {
+        "display": "Northern",
+        "reference": "Location/179fe669-f7a7-580a-9c00-17310a7cd350"
+      },
+      "physicalType": {
+        "coding": [
+          {
+            "code": "jdn",
+            "display": "Jurisdiction",
+            "system": "http://hl7.org/fhir/location-physical-type"
+          }
+        ]
+      }
+    },
+    "request": {
+      "method": "PUT",
+      "url": "Location/44af09da-c517-52ac-8bc2-34bf1b12728a"
+    }
+  }, {
+    "resource": {
+      "resourceType": "Location",
+      "name": "Northern",
+      "status": "active",
+      "mode": "instance",
+      "id": "179fe669-f7a7-580a-9c00-17310a7cd351",
+      "identifier": [
+        {
+          "system": "https://digitalhealth.intrahealth.org/source1",
+          "value": "179fe669-f7a7-580a-9c00-17310a7cd350"
+        }
+      ],
+      "physicalType": {
+        "coding": [
+          {
+            "code": "jdn",
+            "display": "Jurisdiction",
+            "system": "http://hl7.org/fhir/location-physical-type"
+          }
+        ]
+      }
+    },
+    "request": {
+      "method": "PUT",
+      "url": "Location/179fe669-f7a7-580a-9c00-17310a7cd351"
+    }
+  }]
+}

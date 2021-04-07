@@ -1,0 +1,98 @@
+---
+- name: Preparation for facility reconciliation
+  hosts: all
+  remote_user: "{{ user }}"
+  become: true
+  tags: prep
+
+  vars_prompt:
+    - name: "user"
+      prompt: "Please enter the username (with sudo) -- NOT root user or it will fail"
+      private: no
+  
+  vars:
+    executable: "/bin/node"
+
+  tasks:
+
+
+# enable cpu and memory accounting by systemd
+
+  - replace:
+      path: /etc/systemd/system.conf
+      regexp: '#DefaultMemoryAccounting=no'
+      replace: 'DefaultMemoryAccounting=yes'
+      backup: no
+
+  - replace:
+      path: /etc/systemd/system.conf
+      regexp: '#DefaultCPUAccounting=no'
+      replace: 'DefaultCPUAccounting=yes'
+      backup: no
+
+
+# hearth
+
+  - name: install systemd template for hearth service (ubuntu)
+    template:
+      src: hearth.service.j2
+      dest: /etc/systemd/system/hearth.service
+      mode: 644
+      force: yes
+    vars:
+      executable: "/usr/bin/npm"
+    when: ansible_distribution == 'Ubuntu'
+
+
+  - name: install systemd template for hearth service (centos)
+    template:
+      src: hearth.service.j2
+      dest: /etc/systemd/system/hearth.service
+      mode: 644
+      force: yes
+    vars:
+      executable: "/bin/npm"
+    when: ansible_distribution == 'CentOS'
+
+
+  - name: run hearth
+    service: 
+      name: hearth.service
+      # https://docs.ansible.com/ansible/2.7/modules/systemd_module.html
+      state: restarted
+      enabled: yes
+      daemon_reload: yes
+
+
+# backend
+
+  - name: install systemd template for facility-recon service (ubuntu)
+    template:
+      src: facility-recon.service.j2
+      dest: /etc/systemd/system/facility-recon.service
+      mode: 644
+      force: yes
+    vars:
+      executable: "/usr/bin/npm"
+    when: ansible_distribution == 'Ubuntu'
+
+
+  - name: install systemd template for facility-recon service (centos)
+    template:
+      src: facility-recon.service.j2
+      dest: /etc/systemd/system/facility-recon.service
+      mode: 644
+      force: yes
+    vars:
+      executable: "/bin/npm"
+    when: ansible_distribution == 'CentOS'
+
+
+  - name: run backend
+    service: 
+      name: facility-recon.service
+      state: restarted
+      enabled: yes
+      daemon_reload: yes
+
+

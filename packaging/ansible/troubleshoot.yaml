@@ -1,0 +1,116 @@
+---
+- name: Preparation for facility reconciliation
+  hosts: all
+  remote_user: "{{ user }}"
+  become: true
+  tags: prep
+
+  vars_prompt:
+    - name: "user"
+      prompt: "Please enter the username (with sudo)"
+      private: no
+
+  tasks:
+
+  # mongo is running under systemd (ubuntu)
+  - name: run mongodb
+    service: 
+      name: mongodb
+      state: started
+      enabled: yes
+    when: ansible_distribution == 'Ubuntu'
+
+
+  # mongo is running under systemd (centos)
+  - name: run mongodb
+    service: 
+      name: mongod
+      state: started
+      enabled: yes
+    when: ansible_distribution == 'CentOS'
+
+
+  # redis is running under systemd
+  - name: run redis
+    service:
+      name: redis
+      state: started
+      enabled: yes
+
+
+  - name: run app
+    service: 
+      name: facility-recon.service
+      state: started
+      enabled: yes
+
+
+  - name: hearth journalctl since last reboot
+    command: journalctl -u hearth.service -b
+    register: hearth
+
+
+  - debug:
+      msg: "{{ hearth.stdout_lines }}"
+
+
+  - name: app journalctl since last reboot
+    command: journalctl -u facility-recon.service -b
+    register: backend
+
+
+  - debug:
+      msg: "{{ backend.stdout_lines }}"
+
+
+# status output
+
+  - name: status mongo
+    command: systemctl status mongod.service
+    register: statusm
+    when: ansible_distribution == 'CentOS'
+
+
+  - debug:
+      msg: "{{ statusm.stdout_lines }}"
+    when: ansible_distribution == 'CentOS'
+
+
+  - name: status mongo
+    command: systemctl status mongodb.service
+    register: statusm
+    when: ansible_distribution == 'Ubuntu'
+
+
+  - debug:
+      msg: "{{ statusm.stdout_lines }}"
+    when: ansible_distribution == 'Ubuntu'
+
+
+  - name: status redis
+    command: systemctl status redis.service
+    register: statusr
+
+
+  - debug:
+      msg: "{{ statusr.stdout_lines }}"
+
+
+  - name: status hearth
+    command: systemctl status hearth.service
+    register: statush
+
+
+  - debug:
+      msg: "{{ statush.stdout_lines }}"
+
+
+  - name: status app
+    command: systemctl status facility-recon.service
+    register: statusb
+
+    
+  - debug:
+      msg: "{{ statusb.stdout_lines }}"
+
+
