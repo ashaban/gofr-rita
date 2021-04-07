@@ -50,7 +50,7 @@ module.exports = {
     assetsRoot: path.resolve(__dirname, '../../facility-recon-backend/gui'),
     assetsSubDirectory: 'static',
     configDirectory: 'config',
-    assetsPublicPath: '',
+    assetsPublicPath: '/rita',
     /**
      * Source Maps
      */

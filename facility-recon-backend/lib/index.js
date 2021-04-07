@@ -267,59 +267,59 @@ if (cluster.isMaster) {
     });
 
     // check if FR DB Exists
-    const defaultDB = config.getConf('mCSD:registryDB');
-    const requestsDB = config.getConf('mCSD:requestsDB');
-    let url = URI(config.getConf('mCSD:url')).segment(defaultDB).segment('Location').toString();
-    const options = {
-      url,
-    };
-    url = false;
-    request.get(options, (err, res, body) => {
-      if (!res) {
-        winston.error('It appears that FHIR server is not running, quiting GOFR now ...');
-        process.exit();
-      }
-      if (res.statusCode === 404) {
-        async.series([
-          (callback) => {
-            hapi.addTenancy({
-              id: 100,
-              name: defaultDB,
-              description: 'Core Database',
-            }).then(() => callback(null)).catch(error => callback(error));
-          },
-          (callback) => {
-            hapi.addTenancy({
-              id: 101,
-              name: requestsDB,
-              description: 'Requests Database',
-            }).then(() => callback(null)).catch(error => callback(error));
-          },
-        ], (error) => {
-          if (error) {
-            winston.error(error);
-            Promise.exit();
-          }
-          // check if FR has fake org id
-          Promise.all([
-            mcsd.createFakeOrgID(requestsDB),
-            mcsd.createFakeOrgID(defaultDB),
-          ]).then(() => {
-            defaultSetups.initialize();
-          }).catch((error) => {
-            winston.error(error);
-          });
-        });
-      } else {
-        // check if FR has fake org id
-        Promise.all([
-          mcsd.createFakeOrgID(requestsDB),
-          mcsd.createFakeOrgID(defaultDB),
-        ]).catch((error) => {
-          winston.error(error);
-        });
-      }
-    });
+    // const defaultDB = config.getConf('mCSD:registryDB');
+    // const requestsDB = config.getConf('mCSD:requestsDB');
+    // let url = URI(config.getConf('mCSD:url')).segment(defaultDB).segment('Location').toString();
+    // const options = {
+    //   url,
+    // };
+    // url = false;
+    // request.get(options, (err, res, body) => {
+    //   if (!res) {
+    //     winston.error('It appears that FHIR server is not running, quiting GOFR now ...');
+    //     process.exit();
+    //   }
+    //   if (res.statusCode === 404) {
+    //     async.series([
+    //       (callback) => {
+    //         hapi.addTenancy({
+    //           id: 100,
+    //           name: defaultDB,
+    //           description: 'Core Database',
+    //         }).then(() => callback(null)).catch(error => callback(error));
+    //       },
+    //       (callback) => {
+    //         hapi.addTenancy({
+    //           id: 101,
+    //           name: requestsDB,
+    //           description: 'Requests Database',
+    //         }).then(() => callback(null)).catch(error => callback(error));
+    //       },
+    //     ], (error) => {
+    //       if (error) {
+    //         winston.error(error);
+    //         Promise.exit();
+    //       }
+    //       // check if FR has fake org id
+    //       Promise.all([
+    //         mcsd.createFakeOrgID(requestsDB),
+    //         mcsd.createFakeOrgID(defaultDB),
+    //       ]).then(() => {
+    //         defaultSetups.initialize();
+    //       }).catch((error) => {
+    //         winston.error(error);
+    //       });
+    //     });
+    //   } else {
+    //     // check if FR has fake org id
+    //     Promise.all([
+    //       mcsd.createFakeOrgID(requestsDB),
+    //       mcsd.createFakeOrgID(defaultDB),
+    //     ]).catch((error) => {
+    //       winston.error(error);
+    //     });
+    //   }
+    // });
   });
 
   const numWorkers = require('os').cpus().length;
