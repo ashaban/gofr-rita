@@ -244,7 +244,7 @@ module.exports = () => ({
   getLocations(database, callback) {
     const baseUrl = URI(config.getConf('mCSD:url')).segment(database).segment('Location')
       .toString();
-    let url = `${baseUrl}?_count=37000`;
+    let url = `${baseUrl}?_count=400`;
     let locations;
     redisClient.get(`url_${baseUrl}`, (error, results) => {
       if (results) {
@@ -353,7 +353,7 @@ module.exports = () => ({
             return callback(false, false);
           }
           const mcsd = JSON.parse(body);
-          const next = mcsd.link.find(link => link.relation == 'next');
+          const next = mcsd.link && mcsd.link.find(link => link.relation == 'next');
           if (next) {
             url = next.url;
           }
@@ -392,7 +392,7 @@ module.exports = () => ({
             return callback(false, false);
           }
           body = JSON.parse(body);
-          const next = body.link.find(link => link.relation == 'next');
+          const next = body.link && body.link.find(link => link.relation == 'next');
           if (next) {
             url = next.url;
           }
@@ -429,42 +429,83 @@ module.exports = () => ({
       url += `?_id=${parent}&_revinclude:recurse=Location:partof`;
     }
     url = url.toString();
-    const locations = {
-      entry: [],
-    };
-    winston.info(`Getting ${url} from server`);
-    async.doWhilst(
-      (doCallback) => {
-        const options = {
-          url,
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
-        };
-        url = false;
-        request.get(options, (err, res, body) => {
-          if (!isJSON(body)) {
-            return doCallback(false, false);
-          }
-          body = JSON.parse(body);
-          if (body.total == 0 && body.entry && body.entry.length > 0) {
-            winston.error('Non mCSD data returned');
-            return doCallback(false, false);
-          }
-          if (!body.entry || body.entry.length === 0) {
-            return doCallback(false, false);
-          }
-          const next = body.link.find(link => link.relation == 'next');
-          if (next) {
-            url = next.url;
-          }
-          locations.entry = locations.entry.concat(body.entry);
-          return doCallback(false, url);
+    let locations
+    redisClient.get(`childrenof_${parent}`, (error, results) => {
+      if (results) {
+        try {
+          locations = JSON.parse(results);
+        } catch (err) {
+          winston.error(err);
+        }
+      }
+      if (locations) {
+        winston.info(`Getting children of ${parent} from cache`);
+        return callback(locations);
+      }
+      locations = {
+        entry: [],
+      };
+
+      let started;
+      if(parent) {
+        redisClient.get(`started_childrenof_${parent}`, (err, resultsSt) => {
+          started = resultsSt;
         });
-      },
-      () => url != false,
-      () => callback(locations),
-    );
+      }
+      if (started) {
+        winston.info(`getLocations is in progress will try again in 10 seconds.${baseUrl}`);
+        setTimeout(() => {
+          this.getLocationChildren({
+            database,
+            parent,
+          }, callback);
+        }, 10000);
+        return;
+      }
+      redisClient.set(`started_childrenof_${parent}`, '');
+      winston.info(`Getting children of ${parent} from server`);
+      async.doWhilst(
+        (doCallback) => {
+          const options = {
+            url,
+            headers: {
+              'Cache-Control': 'no-cache',
+            },
+          };
+          url = false;
+          request.get(options, (err, res, body) => {
+            if (!isJSON(body)) {
+              return doCallback(false, false);
+            }
+            body = JSON.parse(body);
+            if (body.total == 0 && body.entry && body.entry.length > 0) {
+              winston.error('Non mCSD data returned');
+              return doCallback(false, false);
+            }
+            if (!body.entry || body.entry.length === 0) {
+              return doCallback(false, false);
+            }
+            const next = body.link.find(link => link.relation == 'next');
+            if (next) {
+              url = next.url;
+            }
+            locations.entry = locations.entry.concat(body.entry);
+            return doCallback(false, url);
+          });
+        },
+        () => url != false,
+        () => {
+          if (locations.entry.length > 1 && parent) {
+            winston.info(`Saving children of ${parent} to cache`);
+            redisClient.set(`childrenof_${parent}`, JSON.stringify(locations), 'EX', 1200);
+          } else if (parent) {
+            winston.info(`Not more than 1 entry for ${url} so not caching.`);
+          }
+          this.cleanCache(`started_childrenof_${parent}`, true);
+          callback(locations);
+        },
+      );
+    });
   },
 
   getImmediateChildren(database, id, callback) {
@@ -1886,6 +1927,7 @@ module.exports = () => ({
     request.delete(options, (err, res, body) => {
       this.cleanCache(`url_${urlPrefix.toString()}`, true);
       this.cleanCache('parents', true);
+      this.cleanCache('childrenof_', true);
       if (err) {
         winston.error(err);
         return callback(err);
@@ -1932,6 +1974,7 @@ module.exports = () => ({
                   request.delete(options, (err, res, body) => {
                     this.cleanCache(`url_${url_prefix.toString()}`, true);
                     this.cleanCache('parents', true);
+                    this.cleanCache('childrenof_', true);
                     return nxtEntry();
                   });
                 }, () => nxtDB());
@@ -2472,6 +2515,7 @@ module.exports = () => ({
         this.cleanCache(`url_${url_prefix.toString()}`, true);
         this.cleanCache(`url_${source1UrlPrefix.toString()}`, true);
         this.cleanCache('parents', true);
+        this.cleanCache('childrenof_', true);
         if (res.statusCode === 409) {
           return callback('Can not break this match as there are other matches that are child of this', null);
         }
